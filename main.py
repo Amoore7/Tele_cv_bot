@@ -79,9 +79,13 @@ def get_languages(update, context):
 
 def check_payment(update, context):
     if "تم الدفع" in update.message.text.lower():
-        with open('cv.docx', 'rb') as doc_file:
-            update.message.reply_document(document=doc_file)
-        update.message.reply_text("شكرًا لاستخدامك خدمتنا!")
+        try:
+            with open('cv.docx', 'rb') as doc_file:
+                update.message.reply_document(document=doc_file)
+            update.message.reply_text("شكرًا لاستخدامك خدمتنا!")
+        except Exception as e:
+            update.message.reply_text("حدث خطأ في إرسال الملف. حاول مرة أخرى.")
+            logger.error(f"Error sending file: {e}")
         return ConversationHandler.END
     else:
         update.message.reply_text("أرسل 'تم الدفع' عند اكتمال التحويل.")
@@ -92,48 +96,71 @@ def cancel(update, context):
     return ConversationHandler.END
 
 def create_cv(data):
-    doc = Document()
-    doc.add_heading('Curriculum Vitae', 0)
-    doc.add_heading('Personal Information', level=1)
-    doc.add_paragraph(f"Name: {data['name']}")
-    doc.add_paragraph(f"Phone: {data['phone']}")
-    doc.add_paragraph(f"Email: {data['email']}")
-    doc.add_heading('Education', level=1)
-    doc.add_paragraph(data['education'])
-    doc.add_heading('Experience', level=1)
-    doc.add_paragraph(data['experience'])
-    doc.add_heading('Skills', level=1)
-    doc.add_paragraph(data.get('languages', 'No skills provided'))
-    doc.add_heading('Languages', level=1)
-    doc.add_paragraph(data['languages'])
-    doc.save('cv.docx')
+    try:
+        doc = Document()
+        doc.add_heading('Curriculum Vitae', 0)
+        
+        # المعلومات الشخصية
+        doc.add_heading('Personal Information', level=1)
+        doc.add_paragraph(f"Name: {data.get('name', 'N/A')}")
+        doc.add_paragraph(f"Phone: {data.get('phone', 'N/A')}")
+        doc.add_paragraph(f"Email: {data.get('email', 'N/A')}")
+        
+        # التعليم
+        doc.add_heading('Education', level=1)
+        doc.add_paragraph(data.get('education', 'No education information'))
+        
+        # الخبرة
+        doc.add_heading('Experience', level=1)
+        doc.add_paragraph(data.get('experience', 'No experience information'))
+        
+        # المهارات
+        doc.add_heading('Skills', level=1)
+        doc.add_paragraph(data.get('languages', 'No skills information'))
+        
+        # اللغات
+        doc.add_heading('Languages', level=1)
+        doc.add_paragraph(data.get('languages', 'No languages information'))
+        
+        doc.save('cv.docx')
+        logger.info("تم إنشاء السيرة الذاتية بنجاح")
+        
+    except Exception as e:
+        logger.error(f"Error creating CV: {e}")
+        raise
 
 def main():
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
-    if not token:
-        logger.error("لم يتم تعيين TELEGRAM_BOT_TOKEN")
-        return
-    
-    updater = Updater(token, use_context=True)
-    dp = updater.dispatcher
-    
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            NAME: [MessageHandler(Filters.text & ~Filters.command, get_name)],
-            PHONE: [MessageHandler(Filters.text & ~Filters.command, get_phone)],
-            EMAIL: [MessageHandler(Filters.text & ~Filters.command, get_email)],
-            EDUCATION: [MessageHandler(Filters.text & ~Filters.command, get_education)],
-            EXPERIENCE: [MessageHandler(Filters.text & ~Filters.command, get_experience)],
-            LANGUAGES: [MessageHandler(Filters.text & ~Filters.command, get_languages)],
-            PAYMENT: [MessageHandler(Filters.text & ~Filters.command, check_payment)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-    
-    dp.add_handler(conv_handler)
-    updater.start_polling()
-    updater.idle()
+    try:
+        token = os.getenv('TELEGRAM_BOT_TOKEN')
+        if not token:
+            logger.error("❌ لم يتم تعيين TELEGRAM_BOT_TOKEN")
+            return
+        
+        logger.info("🚀 بدء تشغيل البوت...")
+        updater = Updater(token, use_context=True)
+        dp = updater.dispatcher
+        
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                NAME: [MessageHandler(Filters.text & ~Filters.command, get_name)],
+                PHONE: [MessageHandler(Filters.text & ~Filters.command, get_phone)],
+                EMAIL: [MessageHandler(Filters.text & ~Filters.command, get_email)],
+                EDUCATION: [MessageHandler(Filters.text & ~Filters.command, get_education)],
+                EXPERIENCE: [MessageHandler(Filters.text & ~Filters.command, get_experience)],
+                LANGUAGES: [MessageHandler(Filters.text & ~Filters.command, get_languages)],
+                PAYMENT: [MessageHandler(Filters.text & ~Filters.command, check_payment)],
+            },
+            fallbacks=[CommandHandler('cancel', cancel)],
+        )
+        
+        dp.add_handler(conv_handler)
+        updater.start_polling()
+        logger.info("✅ البوت يعمل الآن!")
+        updater.idle()
+        
+    except Exception as e:
+        logger.error(f"❌ خطأ في تشغيل البوت: {e}")
 
 if __name__ == '__main__':
     main()
