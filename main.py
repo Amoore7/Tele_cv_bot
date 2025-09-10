@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # مراحل المحادثة
-NAME, PHONE, EMAIL, EDUCATION, EXPERIENCE, LANGUAGES, PAYMENT = range(7)
+NAME, PHONE, EMAIL, EDUCATION, EXPERIENCE, SKILLS, LANGUAGES, PAYMENT = range(8)
 
 # بيانات المستخدم
 user_data = {}
@@ -31,6 +31,7 @@ BANK_INFO = """
 """
 
 def start(update, context):
+    user_data.clear()  # مسح البيانات القديمة
     update.message.reply_text(
         "🚀 لنبدأ إنشاء سيرتك الذاتية!\n\n"
         "📝 ملاحظة مهمة: السيرة الذاتية سيتم إنشاؤها باللغة الإنجليزية.\n\n"
@@ -60,39 +61,47 @@ def get_education(update, context):
 
 def get_experience(update, context):
     user_data['experience'] = update.message.text
-    update.message.reply_text("أدخل مهاراتك:")
+    update.message.reply_text("أدخل مهاراتك (افصل بينها بفواصل):")
+    return SKILLS
+
+def get_skills(update, context):
+    user_data['skills'] = update.message.text
+    update.message.reply_text("أدخل اللغات التي تتقنها:")
     return LANGUAGES
 
 def get_languages(update, context):
     user_data['languages'] = update.message.text
     
     # إنشاء السيرة الذاتية
-    create_cv(user_data)
-    
-    # طلب الدفع
-    update.message.reply_text(
-        "شكرًا " + user_data['name'] + "! لقد اكتملت سيرتك الذاتية.\n\n" +
-        BANK_INFO + "\n" +
-        "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
-    )
-    return PAYMENT
+    try:
+        create_cv(user_data)
+        update.message.reply_text(
+            f"شكرًا {user_data['name']}! لقد اكتملت سيرتك الذاتية.\n\n"
+            f"{BANK_INFO}\n"
+            "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
+        )
+        return PAYMENT
+    except Exception as e:
+        update.message.reply_text("❌ حدث خطأ في إنشاء السيرة الذاتية. حاول مرة أخرى.")
+        logger.error(f"Error creating CV: {e}")
+        return ConversationHandler.END
 
 def check_payment(update, context):
     if "تم الدفع" in update.message.text.lower():
         try:
             with open('cv.docx', 'rb') as doc_file:
                 update.message.reply_document(document=doc_file)
-            update.message.reply_text("شكرًا لاستخدامك خدمتنا!")
+            update.message.reply_text("✅ شكرًا لاستخدامك خدمتنا!")
         except Exception as e:
-            update.message.reply_text("حدث خطأ في إرسال الملف. حاول مرة أخرى.")
+            update.message.reply_text("❌ حدث خطأ في إرسال الملف. حاول مرة أخرى.")
             logger.error(f"Error sending file: {e}")
         return ConversationHandler.END
     else:
-        update.message.reply_text("أرسل 'تم الدفع' عند اكتمال التحويل.")
+        update.message.reply_text("⚠️ أرسل 'تم الدفع' عند اكتمال التحويل.")
         return PAYMENT
 
 def cancel(update, context):
-    update.message.reply_text("تم الإلغاء.")
+    update.message.reply_text("❌ تم الإلغاء.")
     return ConversationHandler.END
 
 def create_cv(data):
@@ -116,18 +125,23 @@ def create_cv(data):
         
         # المهارات
         doc.add_heading('Skills', level=1)
-        doc.add_paragraph(data.get('languages', 'No skills information'))
+        doc.add_paragraph(data.get('skills', 'No skills information'))
         
         # اللغات
         doc.add_heading('Languages', level=1)
         doc.add_paragraph(data.get('languages', 'No languages information'))
         
         doc.save('cv.docx')
-        logger.info("تم إنشاء السيرة الذاتية بنجاح")
+        logger.info("✅ تم إنشاء السيرة الذاتية بنجاح")
         
     except Exception as e:
-        logger.error(f"Error creating CV: {e}")
+        logger.error(f"❌ Error creating CV: {e}")
         raise
+
+def error_handler(update, context):
+    logger.error(f'❌ خطأ في البوت: {context.error}')
+    if update and update.message:
+        update.message.reply_text('❌ حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.')
 
 def main():
     try:
@@ -140,6 +154,9 @@ def main():
         updater = Updater(token, use_context=True)
         dp = updater.dispatcher
         
+        # إضافة معالج الأخطاء
+        dp.add_error_handler(error_handler)
+        
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler('start', start)],
             states={
@@ -148,6 +165,7 @@ def main():
                 EMAIL: [MessageHandler(Filters.text & ~Filters.command, get_email)],
                 EDUCATION: [MessageHandler(Filters.text & ~Filters.command, get_education)],
                 EXPERIENCE: [MessageHandler(Filters.text & ~Filters.command, get_experience)],
+                SKILLS: [MessageHandler(Filters.text & ~Filters.command, get_skills)],
                 LANGUAGES: [MessageHandler(Filters.text & ~Filters.command, get_languages)],
                 PAYMENT: [MessageHandler(Filters.text & ~Filters.command, check_payment)],
             },
