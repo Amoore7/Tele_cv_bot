@@ -1,9 +1,9 @@
 import os
 import logging
+import re
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 from docx import Document
-from datetime import datetime
 
 # تمكين التسجيل
 logging.basicConfig(
@@ -116,15 +116,38 @@ SKILLS_BY_FIELD = {
     }
 }
 
+# دالة للتحقق من صحة الإيميل
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    start_message = (
-        "مرحبًا! سأساعدك في إنشاء سيرة ذاتية احترافية.\n\n"
-        "📝 **ملاحظة مهمة:** السيرة الذاتية سيتم إنشاؤها باللغة الإنجليزية "
-        "لتوافقها مع أنظمة التوظيف العالمية (ATS).\n\n"
-        "أدخل اسمك بالكامل:"
+    # رسالة الترحيب التلقائية
+    welcome_message = (
+        "👋 **مرحباً بك في بوت إنشاء السيرة الذاتية الاحترافية!**\n\n"
+        "🎯 **ماذا يمكنني أن أفعل لك؟**\n"
+        "• إنشاء سيرة ذاتية إنجليزية احترافية\n"
+        "• تنسيق متوافق مع أنظمة التوظيف العالمية (ATS)\n"
+        "• مساعدتك في كتابة المهارات المناسبة\n"
+        "• إنشاء ملف Word جاهز للتحميل\n\n"
+        "💡 **للبدء، أرسل /start أو اكتب 'ابدأ'**\n\n"
+        "⚡ **للتوقف في أي وقت، أرسل /cancel**"
     )
-    await update.message.reply_text(start_message)
-    return NAME
+    
+    await update.message.reply_text(welcome_message)
+    
+    # إذا كان المستخدم كتب /start نبدأ العملية
+    if update.message.text == '/start':
+        start_message = (
+            "🚀 **لنبدأ إنشاء سيرتك الذاتية!**\n\n"
+            "📝 **ملاحظة مهمة:** السيرة الذاتية سيتم إنشاؤها باللغة الإنجليزية "
+            "لتوافقها مع أنظمة التوظيف العالمية (ATS).\n\n"
+            "أدخل اسمك بالكامل:"
+        )
+        await update.message.reply_text(start_message)
+        return NAME
+    
+    return ConversationHandler.END
 
 async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_data['name'] = update.message.text
@@ -133,11 +156,20 @@ async def get_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_data['phone'] = update.message.text
-    await update.message.reply_text("أدخل بريدك الإلكتروني:")
+    await update.message.reply_text("أدخل بريدك الإلكتروني (مثال: name@example.com):")
     return EMAIL
 
 async def get_email(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_data['email'] = update.message.text
+    email = update.message.text.strip()
+    
+    # التحقق من صحة الإيميل
+    if not is_valid_email(email):
+        await update.message.reply_text(
+            "❌ البريد الإلكتروني غير صحيح. يرجى إدخال بريد إلكتروني صالح (مثال: name@example.com):"
+        )
+        return EMAIL  # البقاء في نفس المرحلة
+    
+    user_data['email'] = email
     await update.message.reply_text("أدخل مؤهلاتك التعليمية:")
     return EDUCATION
 
@@ -279,9 +311,12 @@ def main() -> None:
     # إنشاء التطبيق
     application = Application.builder().token(token).build()
     
+    # إضافة handler للرسالة التلقائية
+    application.add_handler(CommandHandler("start", start))
+    
     # محادثة
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('ابدأ', start)],
         states={
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_name)],
             PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
