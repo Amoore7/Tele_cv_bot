@@ -1,5 +1,6 @@
 import os
 import logging
+import tempfile
 from telegram import Update, ReplyKeyboardRemove
 from telegram.ext import (
     Updater, CommandHandler, MessageHandler, 
@@ -22,6 +23,7 @@ NAME, PHONE, EMAIL, EDUCATION, EXPERIENCE, SKILLS, LANGUAGES, PAYMENT = range(8)
 
 # بيانات المستخدم
 user_data = {}
+cv_file_path = None  # تخزين مسار الملف
 
 # معلومات الدفع
 BANK_INFO = """
@@ -34,7 +36,9 @@ BANK_INFO = """
 """
 
 def start(update, context):
+    global cv_file_path
     user_data.clear()
+    cv_file_path = None
     update.message.reply_text(
         "🚀 **CV Professional Bot**\n\n"
         "I will create a professional ATS-friendly CV in English\n\n"
@@ -76,7 +80,8 @@ def get_languages(update, context):
     user_data['languages'] = update.message.text
     
     try:
-        create_professional_cv(user_data)
+        global cv_file_path
+        cv_file_path = create_professional_cv(user_data)
         update.message.reply_text(
             f"✅ Thank you {user_data['name']}! Your professional CV is ready.\n\n"
             f"{BANK_INFO}\n"
@@ -84,22 +89,26 @@ def get_languages(update, context):
         )
         return PAYMENT
     except Exception as e:
-        update.message.reply_text("❌ Error creating CV. Please try again.")
         logger.error(f"CV creation error: {e}")
+        update.message.reply_text("❌ Error creating CV. Please try /start again.")
         return ConversationHandler.END
 
 def check_payment(update, context):
+    global cv_file_path
     if "payment done" in update.message.text.lower() or "تم الدفع" in update.message.text.lower():
         try:
-            with open('professional_cv.docx', 'rb') as doc_file:
-                update.message.reply_document(
-                    document=doc_file,
-                    filename=f"CV_{user_data['name'].replace(' ', '_')}.docx"
-                )
-            update.message.reply_text("✅ Thank you for using our service!")
+            if cv_file_path and os.path.exists(cv_file_path):
+                with open(cv_file_path, 'rb') as doc_file:
+                    update.message.reply_document(
+                        document=doc_file,
+                        filename=f"CV_{user_data.get('name', 'User').replace(' ', '_')}.docx"
+                    )
+                update.message.reply_text("✅ Thank you for using our service!")
+            else:
+                update.message.reply_text("❌ CV file not found. Please start over with /start")
         except Exception as e:
-            update.message.reply_text("❌ Error sending file. Please try again.")
             logger.error(f"File send error: {e}")
+            update.message.reply_text("❌ Error sending file. Please try /start again.")
         return ConversationHandler.END
     else:
         update.message.reply_text("⚠️ Please send 'Payment done' after completing the transfer.")
@@ -110,71 +119,61 @@ def cancel(update, context):
     return ConversationHandler.END
 
 def create_professional_cv(data):
-    doc = Document()
-    
-    # Set document style
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(11)
-    
-    # Header - Name
-    header = doc.sections[0].header
-    header_paragraph = header.paragraphs[0]
-    header_paragraph.text = data.get('name', '')
-    header_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    header_paragraph.style.font.size = Pt(14)
-    header_paragraph.style.font.bold = True
-    
-    # Title
-    title = doc.add_heading('CURRICULUM VITAE', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title.style.font.size = Pt(16)
-    title.style.font.bold = True
-    
-    # Personal Information
-    doc.add_heading('PERSONAL INFORMATION', level=1)
-    personal_info = doc.add_paragraph()
-    personal_info.add_run('Name: ').bold = True
-    personal_info.add_run(data.get('name', 'N/A'))
-    personal_info.add_run('\nPhone: ').bold = True
-    personal_info.add_run(data.get('phone', 'N/A'))
-    personal_info.add_run('\nEmail: ').bold = True
-    personal_info.add_run(data.get('email', 'N/A'))
-    
-    # Education
-    doc.add_heading('EDUCATION', level=1)
-    education = doc.add_paragraph()
-    education.add_run(data.get('education', 'No education information provided'))
-    
-    # Professional Experience
-    doc.add_heading('PROFESSIONAL EXPERIENCE', level=1)
-    experience = doc.add_paragraph()
-    experience.add_run(data.get('experience', 'No experience information provided'))
-    
-    # Skills
-    doc.add_heading('TECHNICAL SKILLS', level=1)
-    skills = doc.add_paragraph()
-    skills.add_run(data.get('skills', 'No skills information provided'))
-    
-    # Languages
-    doc.add_heading('LANGUAGES', level=1)
-    languages = doc.add_paragraph()
-    languages.add_run(data.get('languages', 'No languages information provided'))
-    
-    # Footer with date
-    footer = doc.sections[0].footer
-    footer_paragraph = footer.paragraphs[0]
-    footer_paragraph.text = f"Generated on {datetime.now().strftime('%Y-%m-%d')}"
-    footer_paragraph.alignment = WD_ALIGN_PARAGRagraph.CENTER
-    
-    doc.save('professional_cv.docx')
-    logger.info("Professional CV created successfully")
+    try:
+        # إنشاء ملف مؤقت
+        temp_dir = tempfile.gettempdir()
+        cv_filename = f"cv_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+        cv_path = os.path.join(temp_dir, cv_filename)
+        
+        doc = Document()
+        
+        # العنوان الرئيسي
+        title = doc.add_heading('CURRICULUM VITAE', 0)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # المعلومات الشخصية
+        doc.add_heading('PERSONAL INFORMATION', level=1)
+        personal_info = doc.add_paragraph()
+        personal_info.add_run('Name: ').bold = True
+        personal_info.add_run(data.get('name', 'N/A'))
+        personal_info.add_run('\nPhone: ').bold = True
+        personal_info.add_run(data.get('phone', 'N/A'))
+        personal_info.add_run('\nEmail: ').bold = True
+        personal_info.add_run(data.get('email', 'N/A'))
+        
+        # التعليم
+        if data.get('education'):
+            doc.add_heading('EDUCATION', level=1)
+            education = doc.add_paragraph(data.get('education', ''))
+        
+        # الخبرة العملية
+        if data.get('experience'):
+            doc.add_heading('PROFESSIONAL EXPERIENCE', level=1)
+            experience = doc.add_paragraph(data.get('experience', ''))
+        
+        # المهارات
+        if data.get('skills'):
+            doc.add_heading('TECHNICAL SKILLS', level=1)
+            skills = doc.add_paragraph(data.get('skills', ''))
+        
+        # اللغات
+        if data.get('languages'):
+            doc.add_heading('LANGUAGES', level=1)
+            languages = doc.add_paragraph(data.get('languages', ''))
+        
+        # حفظ الملف
+        doc.save(cv_path)
+        logger.info(f"CV created successfully at: {cv_path}")
+        return cv_path
+        
+    except Exception as e:
+        logger.error(f"Error in create_professional_cv: {e}")
+        raise
 
 def error_handler(update, context):
     logger.error(f'Bot error: {context.error}')
     if update and update.message:
-        update.message.reply_text('❌ Unexpected error. Please try again.')
+        update.message.reply_text('❌ Unexpected error. Please try /start again.')
 
 def main():
     try:
