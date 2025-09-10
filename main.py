@@ -6,6 +6,9 @@ from telegram.ext import (
     Filters, ConversationHandler, CallbackContext
 )
 from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from datetime import datetime
 
 # تمكين التسجيل
 logging.basicConfig(
@@ -31,130 +34,158 @@ BANK_INFO = """
 """
 
 def start(update, context):
-    user_data.clear()  # مسح البيانات القديمة
+    user_data.clear()
     update.message.reply_text(
-        "🚀 لنبدأ إنشاء سيرتك الذاتية!\n\n"
-        "📝 ملاحظة مهمة: السيرة الذاتية سيتم إنشاؤها باللغة الإنجليزية.\n\n"
-        "أدخل اسمك بالكامل:"
+        "🚀 **CV Professional Bot**\n\n"
+        "I will create a professional ATS-friendly CV in English\n\n"
+        "Please enter your full name:"
     )
     return NAME
 
 def get_name(update, context):
     user_data['name'] = update.message.text
-    update.message.reply_text("شكرًا! الآن أدخل رقم جوالك:")
+    update.message.reply_text("Please enter your phone number:")
     return PHONE
 
 def get_phone(update, context):
     user_data['phone'] = update.message.text
-    update.message.reply_text("أدخل بريدك الإلكتروني:")
+    update.message.reply_text("Please enter your email:")
     return EMAIL
 
 def get_email(update, context):
     user_data['email'] = update.message.text
-    update.message.reply_text("أدخل مؤهلاتك التعليمية:")
+    update.message.reply_text("🎓 Enter your education (Degree, University, Year):\nExample: Bachelor of Computer Science, King Saud University, 2022")
     return EDUCATION
 
 def get_education(update, context):
     user_data['education'] = update.message.text
-    update.message.reply_text("أدخل خبراتك العملية:")
+    update.message.reply_text("💼 Enter your work experience (Position, Company, Duration, Responsibilities):\nExample: Web Developer, Tech Solutions Co., 2022-2024, Developed web applications using Python and Django")
     return EXPERIENCE
 
 def get_experience(update, context):
     user_data['experience'] = update.message.text
-    update.message.reply_text("أدخل مهاراتك (افصل بينها بفواصل):")
+    update.message.reply_text("🛠️ Enter your skills (separated by commas):\nExample: Python, Django, MySQL, JavaScript, HTML, CSS, Git")
     return SKILLS
 
 def get_skills(update, context):
     user_data['skills'] = update.message.text
-    update.message.reply_text("أدخل اللغات التي تتقنها:")
+    update.message.reply_text("🌐 Enter languages you speak (with proficiency level):\nExample: Arabic (Native), English (Fluent), Spanish (Basic)")
     return LANGUAGES
 
 def get_languages(update, context):
     user_data['languages'] = update.message.text
     
-    # إنشاء السيرة الذاتية
     try:
-        create_cv(user_data)
+        create_professional_cv(user_data)
         update.message.reply_text(
-            f"شكرًا {user_data['name']}! لقد اكتملت سيرتك الذاتية.\n\n"
+            f"✅ Thank you {user_data['name']}! Your professional CV is ready.\n\n"
             f"{BANK_INFO}\n"
-            "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
+            "Send 'Payment done' after transfer to receive your file."
         )
         return PAYMENT
     except Exception as e:
-        update.message.reply_text("❌ حدث خطأ في إنشاء السيرة الذاتية. حاول مرة أخرى.")
-        logger.error(f"Error creating CV: {e}")
+        update.message.reply_text("❌ Error creating CV. Please try again.")
+        logger.error(f"CV creation error: {e}")
         return ConversationHandler.END
 
 def check_payment(update, context):
-    if "تم الدفع" in update.message.text.lower():
+    if "payment done" in update.message.text.lower() or "تم الدفع" in update.message.text.lower():
         try:
-            with open('cv.docx', 'rb') as doc_file:
-                update.message.reply_document(document=doc_file)
-            update.message.reply_text("✅ شكرًا لاستخدامك خدمتنا!")
+            with open('professional_cv.docx', 'rb') as doc_file:
+                update.message.reply_document(
+                    document=doc_file,
+                    filename=f"CV_{user_data['name'].replace(' ', '_')}.docx"
+                )
+            update.message.reply_text("✅ Thank you for using our service!")
         except Exception as e:
-            update.message.reply_text("❌ حدث خطأ في إرسال الملف. حاول مرة أخرى.")
-            logger.error(f"Error sending file: {e}")
+            update.message.reply_text("❌ Error sending file. Please try again.")
+            logger.error(f"File send error: {e}")
         return ConversationHandler.END
     else:
-        update.message.reply_text("⚠️ أرسل 'تم الدفع' عند اكتمال التحويل.")
+        update.message.reply_text("⚠️ Please send 'Payment done' after completing the transfer.")
         return PAYMENT
 
 def cancel(update, context):
-    update.message.reply_text("❌ تم الإلغاء.")
+    update.message.reply_text("❌ Process cancelled.")
     return ConversationHandler.END
 
-def create_cv(data):
-    try:
-        doc = Document()
-        doc.add_heading('Curriculum Vitae', 0)
-        
-        # المعلومات الشخصية
-        doc.add_heading('Personal Information', level=1)
-        doc.add_paragraph(f"Name: {data.get('name', 'N/A')}")
-        doc.add_paragraph(f"Phone: {data.get('phone', 'N/A')}")
-        doc.add_paragraph(f"Email: {data.get('email', 'N/A')}")
-        
-        # التعليم
-        doc.add_heading('Education', level=1)
-        doc.add_paragraph(data.get('education', 'No education information'))
-        
-        # الخبرة
-        doc.add_heading('Experience', level=1)
-        doc.add_paragraph(data.get('experience', 'No experience information'))
-        
-        # المهارات
-        doc.add_heading('Skills', level=1)
-        doc.add_paragraph(data.get('skills', 'No skills information'))
-        
-        # اللغات
-        doc.add_heading('Languages', level=1)
-        doc.add_paragraph(data.get('languages', 'No languages information'))
-        
-        doc.save('cv.docx')
-        logger.info("✅ تم إنشاء السيرة الذاتية بنجاح")
-        
-    except Exception as e:
-        logger.error(f"❌ Error creating CV: {e}")
-        raise
+def create_professional_cv(data):
+    doc = Document()
+    
+    # Set document style
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Calibri'
+    font.size = Pt(11)
+    
+    # Header - Name
+    header = doc.sections[0].header
+    header_paragraph = header.paragraphs[0]
+    header_paragraph.text = data.get('name', '')
+    header_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    header_paragraph.style.font.size = Pt(14)
+    header_paragraph.style.font.bold = True
+    
+    # Title
+    title = doc.add_heading('CURRICULUM VITAE', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title.style.font.size = Pt(16)
+    title.style.font.bold = True
+    
+    # Personal Information
+    doc.add_heading('PERSONAL INFORMATION', level=1)
+    personal_info = doc.add_paragraph()
+    personal_info.add_run('Name: ').bold = True
+    personal_info.add_run(data.get('name', 'N/A'))
+    personal_info.add_run('\nPhone: ').bold = True
+    personal_info.add_run(data.get('phone', 'N/A'))
+    personal_info.add_run('\nEmail: ').bold = True
+    personal_info.add_run(data.get('email', 'N/A'))
+    
+    # Education
+    doc.add_heading('EDUCATION', level=1)
+    education = doc.add_paragraph()
+    education.add_run(data.get('education', 'No education information provided'))
+    
+    # Professional Experience
+    doc.add_heading('PROFESSIONAL EXPERIENCE', level=1)
+    experience = doc.add_paragraph()
+    experience.add_run(data.get('experience', 'No experience information provided'))
+    
+    # Skills
+    doc.add_heading('TECHNICAL SKILLS', level=1)
+    skills = doc.add_paragraph()
+    skills.add_run(data.get('skills', 'No skills information provided'))
+    
+    # Languages
+    doc.add_heading('LANGUAGES', level=1)
+    languages = doc.add_paragraph()
+    languages.add_run(data.get('languages', 'No languages information provided'))
+    
+    # Footer with date
+    footer = doc.sections[0].footer
+    footer_paragraph = footer.paragraphs[0]
+    footer_paragraph.text = f"Generated on {datetime.now().strftime('%Y-%m-%d')}"
+    footer_paragraph.alignment = WD_ALIGN_PARAGRagraph.CENTER
+    
+    doc.save('professional_cv.docx')
+    logger.info("Professional CV created successfully")
 
 def error_handler(update, context):
-    logger.error(f'❌ خطأ في البوت: {context.error}')
+    logger.error(f'Bot error: {context.error}')
     if update and update.message:
-        update.message.reply_text('❌ حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.')
+        update.message.reply_text('❌ Unexpected error. Please try again.')
 
 def main():
     try:
         token = os.getenv('TELEGRAM_BOT_TOKEN')
         if not token:
-            logger.error("❌ لم يتم تعيين TELEGRAM_BOT_TOKEN")
+            logger.error("❌ TELEGRAM_BOT_TOKEN not set")
             return
         
-        logger.info("🚀 بدء تشغيل البوت...")
         updater = Updater(token, use_context=True)
         dp = updater.dispatcher
         
-        # إضافة معالج الأخطاء
         dp.add_error_handler(error_handler)
         
         conv_handler = ConversationHandler(
@@ -174,11 +205,11 @@ def main():
         
         dp.add_handler(conv_handler)
         updater.start_polling()
-        logger.info("✅ البوت يعمل الآن!")
+        logger.info("✅ Bot is running!")
         updater.idle()
         
     except Exception as e:
-        logger.error(f"❌ خطأ في تشغيل البوت: {e}")
+        logger.error(f"❌ Bot startup error: {e}")
 
 if __name__ == '__main__':
     main()
