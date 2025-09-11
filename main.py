@@ -7,8 +7,10 @@ from telegram.ext import (
     Filters, ConversationHandler, CallbackContext
 )
 from docx import Document
-from docx.shared import Pt, RGBColor
+from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import qrcode
+from io import BytesIO
 from datetime import datetime
 
 # تمكين التسجيل
@@ -25,20 +27,38 @@ START_CHOICE, NAME, PHONE, EMAIL, ADDRESS, CAREER_OBJECTIVE, EDUCATION, EXPERIEN
 user_data = {}
 cv_file_path = None
 
-# معلومات الدفع
-BANK_INFO = """
-✅ للدفع عبر البنك:
-- اسم المستفيد: عمر محمد السهلي
-- البنك: الراجحي  
-- رقم الحساب: SA0080000000000000000000
-- المبلغ: 25 ريال سعودي
-
-بعد التحويل، أرسل 'تم الدفع' لاستلام السيرة الذاتية.
-"""
-
 # أزرار تفاعلية
 def create_keyboard(options):
     return ReplyKeyboardMarkup([[option] for option in options], one_time_keyboard=True, resize_keyboard=True)
+
+# إنشاء باركود البنك
+def generate_bank_qr():
+    try:
+        bank_data = """
+        البنك: الراجحي
+        المستفيد: عمر محمد السهلي
+        IBAN: SA0080000000000000000000
+        المبلغ: 25 ريال
+        """
+        
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        
+        qr.add_data(bank_data)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        qr_path = os.path.join(tempfile.gettempdir(), "bank_qr.png")
+        img.save(qr_path)
+        
+        return qr_path
+    except Exception as e:
+        logger.error(f"QR generation error: {e}")
+        return None
 
 def start(update, context):
     global cv_file_path
@@ -47,7 +67,7 @@ def start(update, context):
     
     welcome_msg = (
         "🎯 **مرحباً بك في بوت السيرة الذاتية الاحترافية!**\n\n"
-        "سأساعدك في إنشاء سيرة ذاتية إنجليزية احترافية بتصميم عصري.\n\n"
+        "سأساعدك في إنشاء سيرة ذاتية إنجليزية احترافية.\n\n"
         "💰 **سعر الخدمة: 25 ريال سعودي**\n\n"
         "🚀 **اختر طريقة البدء:**"
     )
@@ -60,8 +80,7 @@ def start_choice(update, context):
     
     if choice == '📝 بدء إنشاء السيرة':
         update.message.reply_text(
-            "👤 **ما هو اسمك بالكامل؟**\n\n"
-            "اكتب اسمك كما تريد ظهوره في السيرة الذاتية",
+            "👤 **ما هو اسمك بالكامل؟**",
             reply_markup=create_keyboard(['رجوع'])
         )
         return NAME
@@ -70,11 +89,10 @@ def start_choice(update, context):
         info_msg = (
             "🤖 **معلومات عن البوت:**\n\n"
             "• إنشاء سيرة ذاتية إنجليزية احترافية\n"
-            "• تصميم ATS-friendly للتوافق مع أنظمة التوظيف\n"
+            "• تصميم ATS-friendly\n"
             "• 3 قوالب مختلفة للاختيار\n"
-            "• حفظ البيانات خلال الجلسة\n"
             "• إمكانية الرجوع والتعديل\n\n"
-            "💰 **السعر: 25 ريال سعودي** لكل سيرة ذاتية\n\n"
+            "💰 **السعر: 25 ريال سعودي**\n\n"
             "🎯 **للبَدء، اختر 'بدء إنشاء السيرة'**"
         )
         update.message.reply_text(info_msg, reply_markup=create_keyboard(['📝 بدء إنشاء السيرة', 'رجوع']))
@@ -90,26 +108,16 @@ def get_name(update, context):
         return START_CHOICE
         
     user_data['name'] = update.message.text
-    
-    next_msg = (
-        "📱 **أدخل رقم جوالك:**\n"
-        "مثال: 0512345678"
-    )
-    update.message.reply_text(next_msg, reply_markup=create_keyboard(['رجوع']))
+    update.message.reply_text("📱 **أدخل رقم جوالك:**", reply_markup=create_keyboard(['رجوع']))
     return PHONE
 
 def get_phone(update, context):
     if update.message.text.lower() == 'رجوع':
-        update.message.reply_text("🔙 عدنا لسؤال الاسم:\nما هو اسمك بالكامل؟")
+        update.message.reply_text("🔙 عدنا لسؤال الاسم:\nما هو اسمك بالكامل?")
         return NAME
         
     user_data['phone'] = update.message.text
-    
-    next_msg = (
-        "📧 **أدخل بريدك الإلكتروني:**\n"
-        "مثال: name@example.com"
-    )
-    update.message.reply_text(next_msg, reply_markup=create_keyboard(['رجوع']))
+    update.message.reply_text("📧 **أدخل بريدك الإلكتروني:**", reply_markup=create_keyboard(['رجوع']))
     return EMAIL
 
 def get_email(update, context):
@@ -118,12 +126,7 @@ def get_email(update, context):
         return PHONE
         
     user_data['email'] = update.message.text
-    
-    next_msg = (
-        "🏠 **أدخل عنوانك:**\n"
-        "مثال: Medina, Saudi Arabia"
-    )
-    update.message.reply_text(next_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
+    update.message.reply_text("🏠 **أدخل عنوانك:**", reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return ADDRESS
 
 def get_address(update, context):
@@ -140,7 +143,7 @@ def get_address(update, context):
     objective_msg = (
         "🎯 **أدخل الهدف المهني (Career Objective):**\n\n"
         "💡 **مثال:**\n"
-        "To leverage my technical and sales expertise in building AI-powered digital solutions and driving revenue growth within a forward-thinking organization."
+        "To leverage my technical expertise in building digital solutions"
     )
     update.message.reply_text(objective_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return CAREER_OBJECTIVE
@@ -151,7 +154,7 @@ def get_career_objective(update, context):
         update.message.reply_text("🔙 عدنا لسؤال العنوان:\nأدخل عنوانك:")
         return ADDRESS
     elif update.message.text.lower() == 'تخطي':
-        user_data['career_objective'] = "Seeking a challenging position to utilize my skills and contribute to organizational growth."
+        user_data['career_objective'] = "Seeking a challenging position to utilize my skills"
         update.message.reply_text("✅ تم استخدام هدف افتراضي.")
     else:
         user_data['career_objective'] = update.message.text
@@ -159,7 +162,7 @@ def get_career_objective(update, context):
     edu_msg = (
         "🎓 **أدخل مؤهلاتك التعليمية:**\n\n"
         "💡 **مثال:**\n"
-        "High School Diploma - Government School - 2011"
+        "Bachelor of Computer Science - King Saud University - 2022"
     )
     update.message.reply_text(edu_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return EDUCATION
@@ -178,13 +181,9 @@ def get_education(update, context):
     exp_msg = (
         "💼 **أدخل خبراتك العملية:**\n\n"
         "💡 **مثال:**\n"
-        "Sales Officer | Wahat Al Munawara\n"
-        "Jan 2019 – Present\n"
-        "• Generated over 300,000 SAR in annual sales\n"
-        "• Built long-term client relationships\n\n"
-        "Owner & Founder | Digital Developer Establishment\n"
-        "Apr 2017 – Jan 2019\n"
-        "• Launched and managed smartphone retail business"
+        "Web Developer - Tech Solutions Co. - 2022-2024\n"
+        "• Developed web applications using Python\n"
+        "• Improved system efficiency by 40%"
     )
     update.message.reply_text(exp_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return EXPERIENCE
@@ -203,7 +202,7 @@ def get_experience(update, context):
     skills_msg = (
         "🛠️ **أدخل مهاراتك (افصل بينها بفواصل):**\n\n"
         "💡 **مثال:**\n"
-        "Sales Strategy, Digital Marketing, CRM, Project Management, Microsoft Office"
+        "Python, Django, SQL, JavaScript, Project Management"
     )
     update.message.reply_text(skills_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return SKILLS
@@ -238,12 +237,11 @@ def get_languages(update, context):
     else:
         user_data['languages'] = update.message.text
     
-    # اختيار القالب
     template_msg = (
         "🎨 **اختر تصميم السيرة الذاتية:**\n\n"
-        "1. **كلاسيكي** - تنسيق تقليدي ومهني\n"
-        "2. **حديث** - تصميم ATS عصري (موصى به)\n"
-        "3. **مبدع** - تصميم أنيق مع خطوط مميزة\n\n"
+        "1. **كلاسيكي** - تنسيق تقليدي\n"
+        "2. **حديث** - تصميم ATS عصري\n"
+        "3. **مبدع** - تصميم أنيق\n\n"
         "أختر رقم القالب (1, 2, 3):"
     )
     
@@ -257,29 +255,18 @@ def choose_template(update, context):
         return LANGUAGES
         
     template_choice = update.message.text
-    templates = {
-        '1': 'classic',
-        '2': 'modern', 
-        '3': 'creative'
-    }
+    templates = {'1': 'classic', '2': 'modern', '3': 'creative'}
     
     if template_choice in templates:
         user_data['template'] = templates[template_choice]
         
-        # معاينة البيانات
         preview_msg = (
             "📋 **لمحة عن بياناتك:**\n\n"
             f"👤 **الاسم:** {user_data.get('name', 'N/A')}\n"
             f"📞 **الجوال:** {user_data.get('phone', 'N/A')}\n"
             f"📧 **الإيميل:** {user_data.get('email', 'N/A')}\n"
-            f"🏠 **العنوان:** {user_data.get('address', 'N/A')}\n"
-            f"🎯 **الهدف:** {user_data.get('career_objective', 'N/A')[:50]}...\n"
-            f"🎓 **التعليم:** {user_data.get('education', 'N/A')[:50]}...\n"
-            f"💼 **الخبرات:** {user_data.get('experience', 'N/A')[:50]}...\n"
-            f"🛠️ **المهارات:** {user_data.get('skills', 'N/A')[:50]}...\n"
-            f"🌐 **اللغات:** {user_data.get('languages', 'N/A')}\n"
-            f"🎨 **التصميم:** {user_data.get('template', 'N/A')}\n\n"
-            "هل تريد المتابعة وإنشاء السيرة الذاتية؟"
+            f"🎯 **الهدف:** {user_data.get('career_objective', 'N/A')[:50]}...\n\n"
+            "هل تريد المتابعة وإنشاء السيرة الذاتية?"
         )
         
         update.message.reply_text(preview_msg, reply_markup=create_keyboard(['نعم', 'لا', 'تعديل']))
@@ -301,7 +288,6 @@ def review_data(update, context):
                 f"✅ **تهانينا {user_data.get('name')}!**\n\n"
                 "تم إنشاء سيرتك الذاتية بنجاح 🎉\n\n"
                 "💰 **السعر: 25 ريال سعودي**\n\n"
-                f"{BANK_INFO}\n\n"
                 "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
             )
             update.message.reply_text(success_msg, reply_markup=create_keyboard(['تم الدفع']))
@@ -318,38 +304,49 @@ def review_data(update, context):
         ]))
         return REVIEW
         
-    else:  # لا أو أي رد آخر
+    else:
         update.message.reply_text("❌ تم إلغاء العملية. اكتب /start للبدء من جديد.")
         return ConversationHandler.END
 
 def check_payment(update, context):
     if "تم الدفع" in update.message.text.lower():
         try:
-            if cv_file_path and os.path.exists(cv_file_path):
-                with open(cv_file_path, 'rb') as doc_file:
-                    update.message.reply_document(
-                        document=doc_file,
-                        filename=f"CV_{user_data.get('name', 'User')}.docx",
-                        caption="🎉 **ها هي سيرتك الذاتية الجاهزة!**\n\nشكراً لثقتك بنا 🌟"
+            # إنشاء وإرسال الباركود
+            qr_path = generate_bank_qr()
+            
+            if qr_path:
+                with open(qr_path, 'rb') as qr_file:
+                    update.message.reply_photo(
+                        photo=qr_file,
+                        caption=(
+                            "💳 **الدفع عبر البنك:**\n\n"
+                            "🔹 البنك: الراجحي\n"
+                            "🔹 المستفيد: عمر محمد السهلي\n"  
+                            "🔹 IBAN: SA0080000000000000000000\n"
+                            "🔹 المبلغ: 25 ريال\n\n"
+                            "📸 يمكنك مسح الباركود\n"
+                            "✅ بعد التحويل، أرسل 'تم الدفع' مرة أخرى"
+                        )
                     )
-                update.message.reply_text("✅ تم الإرسال بنجاح! اكتب /start لإنشاء سيرة جديدة.")
             else:
-                update.message.reply_text("❌ لم يتم العثور على الملف. اكتب /start للبدء من جديد.")
+                update.message.reply_text(
+                    "💳 **الدفع عبر البنك:**\n\n"
+                    "🔹 البنك: الراجحي\n"
+                    "🔹 المستفيد: عمر محمد السهلي\n"  
+                    "🔹 IBAN: SA0080000000000000000000\n"
+                    "🔹 المبلغ: 25 ريال\n\n"
+                    "✅ بعد التحويل، أرسل 'تم الدفع'"
+                )
+            
+            return PAYMENT
+            
         except Exception as e:
-            logger.error(f"File send error: {e}")
-            update.message.reply_text("❌ خطأ في الإرسال. حاول /start مرة أخرى.")
-        return ConversationHandler.END
+            logger.error(f"Payment error: {e}")
+            update.message.reply_text("❌ حدث خطأ. حاول /start مرة أخرى.")
+            return ConversationHandler.END
     else:
         update.message.reply_text("⚠️ أرسل 'تم الدفع' بعد اكتمال التحويل.")
         return PAYMENT
-
-def cancel(update, context):
-    update.message.reply_text(
-        "❌ تم إلغاء العملية.\n\n"
-        "اكتب /start عندما تكون جاهزاً للبدء 🚀",
-        reply_markup=ReplyKeyboardRemove()
-    )
-    return ConversationHandler.END
 
 def create_professional_cv(data, template_name):
     try:
@@ -359,128 +356,99 @@ def create_professional_cv(data, template_name):
         
         doc = Document()
         
-        # تطبيق القالب المختار
         if template_name == 'classic':
             apply_classic_template(doc, data)
         elif template_name == 'modern':
-            apply_modern_ats_template(doc, data)
+            apply_modern_template(doc, data)
         elif template_name == 'creative':
             apply_creative_template(doc, data)
         else:
-            apply_modern_ats_template(doc, data)  # افتراضي
+            apply_modern_template(doc, data)
         
         doc.save(cv_path)
-        logger.info(f"CV created with {template_name} template: {cv_path}")
+        logger.info(f"CV created: {cv_path}")
         return cv_path
         
     except Exception as e:
         logger.error(f"CV creation error: {e}")
         raise
 
-def apply_modern_ats_template(doc, data):
-    """التصميم الحديث ATS-Friendly"""
-    # === الإعداد العام ===
+def apply_modern_template(doc, data):
     style = doc.styles['Normal']
     style.font.name = 'Calibri'
     style.font.size = Pt(11)
     
-    # === الاسم ===
-    name = doc.add_paragraph()
-    name_run = name.add_run(data.get('name', '').upper())
-    name_run.font.size = Pt(16)
-    name_run.bold = True
-    name.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    name.paragraph_format.space_after = Pt(6)
-    
-    # === معلومات الاتصال ===
-    contact = doc.add_paragraph()
-    contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    contact.add_run(f"Phone: {data.get('phone', '')} | ")
-    contact.add_run(f"Email: {data.get('email', '')} | ")
-    contact.add_run(f"Address: {data.get('address', 'Medina, Saudi Arabia')}")
-    contact.paragraph_format.space_after = Pt(12)
-    
-    # === الهدف المهني ===
-    if data.get('career_objective'):
-        doc.add_heading('CAREER OBJECTIVE', level=1)
-        objective = doc.add_paragraph(data.get('career_objective'))
-        objective.paragraph_format.space_after = Pt(12)
-    
-    # === الخبرات ===
-    if data.get('experience') and data.get('experience') != "No work experience specified":
-        doc.add_heading('EXPERIENCE', level=1)
-        experience = doc.add_paragraph(data.get('experience'))
-        experience.paragraph_format.space_after = Pt(12)
-    
-    # === المهارات ===
-    if data.get('skills') and data.get('skills') != "No skills specified":
-        doc.add_heading('SKILLS', level=1)
-        skills = doc.add_paragraph(data.get('skills'))
-        skills.paragraph_format.space_after = Pt(12)
-    
-    # === التعليم ===
-    if data.get('education') and data.get('education') != "No formal education specified":
-        doc.add_heading('EDUCATION', level=1)
-        education = doc.add_paragraph(data.get('education'))
-        education.paragraph_format.space_after = Pt(12)
-    
-    # === اللغات ===
-    if data.get('languages') and data.get('languages') != "No languages specified":
-        doc.add_heading('LANGUAGES', level=1)
-        languages = doc.add_paragraph(data.get('languages'))
-
-def apply_classic_template(doc, data):
-    """القوالب الكلاسيكي"""
-    doc.add_heading('CURRICULUM VITAE', 0)
-    add_personal_info_simple(doc, data)
-    add_section_simple(doc, 'CAREER OBJECTIVE', data.get('career_objective'))
-    add_section_simple(doc, 'EXPERIENCE', data.get('experience'))
-    add_section_simple(doc, 'SKILLS', data.get('skills'))
-    add_section_simple(doc, 'EDUCATION', data.get('education'))
-    add_section_simple(doc, 'LANGUAGES', data.get('languages'))
-
-def apply_creative_template(doc, data):
-    """القوالب الإبداعي"""
     title = doc.add_heading('CURRICULUM VITAE', 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title.style.font.size = Pt(18)
-    title.style.font.name = 'Georgia'
     
-    add_personal_info_simple(doc, data)
-    add_section_simple(doc, 'CAREER OBJECTIVE', data.get('career_objective'))
-    add_section_simple(doc, 'PROFESSIONAL EXPERIENCE', data.get('experience'))
-    add_section_simple(doc, 'SKILLS & COMPETENCIES', data.get('skills'))
-    add_section_simple(doc, 'EDUCATION', data.get('education'))
-    add_section_simple(doc, 'LANGUAGES', data.get('languages'))
+    contact = doc.add_paragraph()
+    contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    contact.add_run(f"Name: {data.get('name', 'N/A')}\n")
+    contact.add_run(f"Phone: {data.get('phone', 'N/A')}\n")
+    contact.add_run(f"Email: {data.get('email', 'N/A')}\n")
+    contact.add_run(f"Address: {data.get('address', 'N/A')}")
+    
+    if data.get('career_objective'):
+        doc.add_heading('CAREER OBJECTIVE', level=1)
+        doc.add_paragraph(data.get('career_objective'))
+    
+    if data.get('experience') != "No work experience specified":
+        doc.add_heading('EXPERIENCE', level=1)
+        doc.add_paragraph(data.get('experience'))
+    
+    if data.get('skills') != "No skills specified":
+        doc.add_heading('SKILLS', level=1)
+        doc.add_paragraph(data.get('skills'))
+    
+    if data.get('education') != "No formal education specified":
+        doc.add_heading('EDUCATION', level=1)
+        doc.add_paragraph(data.get('education'))
+    
+    if data.get('languages') != "No languages specified":
+        doc.add_heading('LANGUAGES', level=1)
+        doc.add_paragraph(data.get('languages'))
 
-def add_personal_info_simple(doc, data):
-    """معلومات شخصية مبسطة"""
-    doc.add_heading('PERSONAL INFORMATION', level=1)
-    p = doc.add_paragraph()
-    p.add_run('Name: ').bold = True
-    p.add_run(data.get('name', 'N/A'))
-    p.add_run('\nPhone: ').bold = True
-    p.add_run(data.get('phone', 'N/A'))
-    p.add_run('\nEmail: ').bold = True
-    p.add_run(data.get('email', 'N/A'))
-    p.add_run('\nAddress: ').bold = True
-    p.add_run(data.get('address', 'N/A'))
-    p.paragraph_format.space_after = Pt(12)
+def apply_classic_template(doc, data):
+    doc.add_heading('CURRICULUM VITAE', 0)
+    add_section(doc, 'PERSONAL INFO', f"Name: {data.get('name', 'N/A')}\nPhone: {data.get('phone', 'N/A')}\nEmail: {data.get('email', 'N/A')}")
+    add_section(doc, 'CAREER OBJECTIVE', data.get('career_objective'))
+    add_section(doc, 'EXPERIENCE', data.get('experience'))
+    add_section(doc, 'SKILLS', data.get('skills'))
+    add_section(doc, 'EDUCATION', data.get('education'))
+    add_section(doc, 'LANGUAGES', data.get('languages'))
 
-def add_section_simple(doc, title, content):
-    """إضافة قسم مبسط"""
+def apply_creative_template(doc, data):
+    title = doc.add_heading('CURRICULUM VITAE', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    add_section(doc, 'PERSONAL INFORMATION', 
+                f"Name: {data.get('name', 'N/A')}\n"
+                f"Phone: {data.get('phone', 'N/A')}\n"
+                f"Email: {data.get('email', 'N/A')}\n"
+                f"Address: {data.get('address', 'N/A')}")
+    
+    add_section(doc, 'PROFESSIONAL SUMMARY', data.get('career_objective'))
+    add_section(doc, 'WORK EXPERIENCE', data.get('experience'))
+    add_section(doc, 'CORE COMPETENCIES', data.get('skills'))
+    add_section(doc, 'EDUCATION', data.get('education'))
+    add_section(doc, 'LANGUAGES', data.get('languages'))
+
+def add_section(doc, title, content):
     if content and "No " not in content:
         doc.add_heading(title, level=1)
         doc.add_paragraph(content)
-        doc.add_paragraph().paragraph_format.space_after = Pt(12)
+
+def cancel(update, context):
+    update.message.reply_text(
+        "❌ تم إلغاء العملية.\n\nاكتب /start للبدء من جديد.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    return ConversationHandler.END
 
 def error_handler(update, context):
     logger.error(f'Bot error: {context.error}')
     if update and update.message:
-        update.message.reply_text(
-            "❌ حدث خطأ غير متوقع.\n\n"
-            "اكتب /start للمحاولة مرة أخرى 🔄"
-        )
+        update.message.reply_text("❌ حدث خطأ. حاول /start مرة أخرى.")
 
 def main():
     try:
@@ -515,10 +483,8 @@ def main():
         )
         
         dp.add_handler(conv_handler)
-        
-        # بدء البوت
         updater.start_polling()
-        logger.info("✅ Bot is running with enhanced features!")
+        logger.info("✅ Bot is running with QR code feature!")
         updater.idle()
         
     except Exception as e:
