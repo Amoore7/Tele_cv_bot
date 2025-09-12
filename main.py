@@ -19,32 +19,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # مراحل المحادثة
-START_CHOICE, NAME, PHONE, EMAIL, ADDRESS, CAREER_OBJECTIVE, EDUCATION, EXPERIENCE, SKILLS, LANGUAGES, TEMPLATE, REVIEW, PAYMENT = range(13)
+(
+    START_CHOICE, NAME, PHONE, EMAIL, ADDRESS, 
+    CAREER_OBJECTIVE, EDUCATION, EXPERIENCE, 
+    SKILLS, LANGUAGES, ADD_CUSTOM_SECTION, 
+    CUSTOM_SECTION_NAME, CUSTOM_SECTION_CONTENT, 
+    TEMPLATE, REVIEW, PAYMENT
+) = range(16)
 
 # بيانات المستخدم
 user_data = {}
 cv_file_path = None
 
-# عداد العملاء المجانيين
-FREE_TRIAL_COUNTER = 0
-FREE_TRIAL_LIMIT = 100  # أول 100 عميل مجاني
-
 # معلومات الدفع
 BANK_INFO = """
-💳 **الدفع عبر البنك:**
+✅ للدفع عبر البنك:
 - اسم المستفيد: عمر محمد السهلي
 - البنك: الراجحي  
 - رقم الحساب: SA0080000000000000000000
 - المبلغ: 25 ريال سعودي
 
-📩 بعد التحويل، أرسل 'تم الدفع' لاستلام السيرة الذاتية.
-"""
-
-FREE_TRIAL_INFO = """
-🎁 **عرض تأسيسي مجاني!**
-أنت من أوائل 100 عميل يحصلون على الخدمة مجاناً كاملاً!
-
-⚡ جاري إعداد سيرتك الذاتية...
+بعد التحويل، أرسل 'تم الدفع' لاستلام السيرة الذاتية.
 """
 
 # أزرار تفاعلية
@@ -59,7 +54,7 @@ def start(update, context):
     welcome_msg = (
         "🎯 **مرحباً بك في بوت السيرة الذاتية الاحترافية!**\n\n"
         "سأساعدك في إنشاء سيرة ذاتية إنجليزية احترافية بتصميم عصري.\n\n"
-        f"🎁 **عرض خاص:** أول {FREE_TRIAL_LIMIT} عميل مجاني بالكامل!\n\n"
+        "💰 **سعر الخدمة: 25 ريال سعودي**\n\n"
         "🚀 **اختر طريقة البدء:**"
     )
     
@@ -71,7 +66,7 @@ def start_choice(update, context):
     
     if choice == '📝 بدء إنشاء السيرة':
         update.message.reply_text(
-            "👤 **ما هو اسمك بالكامل?**\n\n"
+            "👤 **ما هو اسمك بالكامل؟**\n\n"
             "اكتب اسمك كما تريد ظهوره في السيرة الذاتية",
             reply_markup=create_keyboard(['رجوع'])
         )
@@ -83,10 +78,10 @@ def start_choice(update, context):
             "• إنشاء سيرة ذاتية إنجليزية احترافية\n"
             "• تصميم ATS-friendly للتوافق مع أنظمة التوظيف\n"
             "• 3 قوالب مختلفة للاختيار\n"
+            "• إضافة أقسام مخصصة\n"
             "• حفظ البيانات خلال الجلسة\n"
             "• إمكانية الرجوع والتعديل\n\n"
-            f"💰 **السعر:** مجاني لأول {FREE_TRIAL_LIMIT} عميل\n"
-            "بعدها: 25 ريال سعودي\n\n"
+            "💰 **السعر: 25 ريال سعودي** لكل سيرة ذاتية\n\n"
             "🎯 **للبَدء، اختر 'بدء إنشاء السيرة'**"
         )
         update.message.reply_text(info_msg, reply_markup=create_keyboard(['📝 بدء إنشاء السيرة', 'رجوع']))
@@ -112,7 +107,7 @@ def get_name(update, context):
 
 def get_phone(update, context):
     if update.message.text.lower() == 'رجوع':
-        update.message.reply_text("🔙 عدنا لسؤال الاسم:\nما هو اسمك بالكامل?")
+        update.message.reply_text("🔙 عدنا لسؤال الاسم:\nما هو اسمك بالكامل؟")
         return NAME
         
     user_data['phone'] = update.message.text
@@ -250,23 +245,112 @@ def get_languages(update, context):
     else:
         user_data['languages'] = update.message.text
     
-    # اختيار القالب
-    template_msg = (
-        "🎨 **اختر تصميم السيرة الذاتية:**\n\n"
-        "1. **كلاسيكي** - تنسيق تقليدي ومهني\n"
-        "2. **حديث** - تصميم ATS عصري (موصى به)\n"
-        "3. **مبدع** - تصميم أنيق مع خطوط مميزة\n\n"
-        "أختر رقم القالب (1, 2, 3):"
+    # السؤال عن الأقسام الإضافية
+    custom_msg = (
+        "➕ **هل ترغب في إضافة قسم إضافي؟**\n\n"
+        "يمكنك إضافة أقسام مثل:\n"
+        "• المشاريع الشخصية\n"
+        "• الدورات التدريبية\n"
+        "• الجوائز والتكريمات\n"
+        "• الهوايات والاهتمامات\n"
+        "• المراجع\n\n"
+        "اختر 'نعم' لإضافة قسم أو 'تخطي' للمتابعة"
     )
-    
-    update.message.reply_text(template_msg, reply_markup=create_keyboard(['1', '2', '3', 'رجوع']))
-    return TEMPLATE
+    update.message.reply_text(custom_msg, reply_markup=create_keyboard(['نعم', 'تخطي', 'رجوع']))
+    return ADD_CUSTOM_SECTION
 
-def choose_template(update, context):
-    if update.message.text.lower() == 'رجوع':
+def add_custom_section(update, context):
+    choice = update.message.text.lower()
+    
+    if choice == 'رجوع':
         user_data.pop('languages', None)
         update.message.reply_text("🔙 عدنا لسؤال اللغات:\nأدخل اللغات التي تتقنها:")
         return LANGUAGES
+    elif choice == 'تخطي':
+        # تهيئة الأقسام المخصصة كقائمة فارغة إذا لم تكن موجودة
+        if 'custom_sections' not in user_data:
+            user_data['custom_sections'] = []
+        
+        # اختيار القالب
+        template_msg = (
+            "🎨 **اختر تصميم السيرة الذاتية:**\n\n"
+            "1. **كلاسيكي** - تنسيق تقليدي ومهني\n"
+            "2. **حديث** - تصميم ATS عصري (موصى به)\n"
+            "3. **مبدع** - تصميم أنيق مع خطوط مميزة\n\n"
+            "أختر رقم القالب (1, 2, 3):"
+        )
+        update.message.reply_text(template_msg, reply_markup=create_keyboard(['1', '2', '3', 'رجوع']))
+        return TEMPLATE
+    elif choice == 'نعم':
+        update.message.reply_text(
+            "📝 **ما هو اسم القسم الذي تريد إضافته؟**\n\n"
+            "مثال: Projects, Certifications, Awards, etc.",
+            reply_markup=create_keyboard(['رجوع'])
+        )
+        return CUSTOM_SECTION_NAME
+    else:
+        update.message.reply_text("❌ اختر من الخيارات المتاحة")
+        return ADD_CUSTOM_SECTION
+
+def get_custom_section_name(update, context):
+    if update.message.text.lower() == 'رجوع':
+        update.message.reply_text(
+            "➕ **هل ترغب في إضافة قسم إضافي؟**",
+            reply_markup=create_keyboard(['نعم', 'تخطي', 'رجوع'])
+        )
+        return ADD_CUSTOM_SECTION
+        
+    # تخزين اسم القسم مؤقتاً
+    context.user_data['current_section_name'] = update.message.text
+    
+    update.message.reply_text(
+        f"📋 **أدخل محتوى قسم '{update.message.text}':**\n\n"
+        "اكتب المعلومات التي تريد إضافتها في هذا القسم",
+        reply_markup=create_keyboard(['رجوع'])
+    )
+    return CUSTOM_SECTION_CONTENT
+
+def get_custom_section_content(update, context):
+    if update.message.text.lower() == 'رجوع':
+        update.message.reply_text(
+            "📝 **ما هو اسم القسم الذي تريد إضافته؟**",
+            reply_markup=create_keyboard(['رجوع'])
+        )
+        return CUSTOM_SECTION_NAME
+        
+    # الحصول على اسم القسم من البيانات المؤقتة
+    section_name = context.user_data.get('current_section_name', 'Custom Section')
+    
+    # إضافة القسم إلى بيانات المستخدم
+    if 'custom_sections' not in user_data:
+        user_data['custom_sections'] = []
+    
+    user_data['custom_sections'].append({
+        'name': section_name,
+        'content': update.message.text
+    })
+    
+    # تنظيف البيانات المؤقتة
+    context.user_data.pop('current_section_name', None)
+    
+    # السؤال عن إضافة المزيد من الأقسام
+    update.message.reply_text(
+        f"✅ تم إضافة قسم '{section_name}' بنجاح!\n\n"
+        "هل ترغب في إضافة قسم آخر؟",
+        reply_markup=create_keyboard(['نعم', 'لا', 'رجوع'])
+    )
+    return ADD_CUSTOM_SECTION
+
+def choose_template(update, context):
+    if update.message.text.lower() == 'رجوع':
+        # إذا كان هناك أقسام مخصصة، احذفها وارجع
+        if user_data.get('custom_sections'):
+            user_data.pop('custom_sections', None)
+        update.message.reply_text(
+            "➕ **هل ترغب في إضافة قسم إضافي؟",
+            reply_markup=create_keyboard(['نعم', 'تخطي', 'رجوع'])
+        )
+        return ADD_CUSTOM_SECTION
         
     template_choice = update.message.text
     templates = {
@@ -290,9 +374,14 @@ def choose_template(update, context):
             f"💼 **الخبرات:** {user_data.get('experience', 'N/A')[:50]}...\n"
             f"🛠️ **المهارات:** {user_data.get('skills', 'N/A')[:50]}...\n"
             f"🌐 **اللغات:** {user_data.get('languages', 'N/A')}\n"
-            f"🎨 **التصميم:** {user_data.get('template', 'N/A')}\n\n"
-            "هل تريد المتابعة وإنشاء السيرة الذاتية?"
         )
+        
+        # إضافة الأقسام المخصصة للمعاينة إذا وجدت
+        if user_data.get('custom_sections'):
+            preview_msg += f"➕ **الأقسام الإضافية:** {len(user_data['custom_sections']} قسم\n"
+        
+        preview_msg += f"🎨 **التصميم:** {user_data.get('template', 'N/A')}\n\n"
+        preview_msg += "هل تريد المتابعة وإنشاء السيرة الذاتية؟"
         
         update.message.reply_text(preview_msg, reply_markup=create_keyboard(['نعم', 'لا', 'تعديل']))
         return REVIEW
@@ -305,48 +394,38 @@ def review_data(update, context):
     
     if choice == 'نعم':
         try:
-            global cv_file_path, FREE_TRIAL_COUNTER
+            global cv_file_path
             update.message.reply_text("⏳ جاري إنشاء سيرتك الذاتية...")
             cv_file_path = create_professional_cv(user_data, user_data.get('template', 'modern'))
             
-            # التحقق من العداد المجاني
-            if FREE_TRIAL_COUNTER < FREE_TRIAL_LIMIT:
-                FREE_TRIAL_COUNTER += 1
-                success_msg = (
-                    f"🎁 **عرض مجاني!** ({FREE_TRIAL_COUNTER}/{FREE_TRIAL_LIMIT})\n\n"
-                    "تم إنشاء سيرتك الذاتية بنجاح 🎉\n\n"
-                    f"{FREE_TRIAL_INFO}"
-                )
-                # إرسال الملف مباشرة (مجاني)
-                with open(cv_file_path, 'rb') as doc_file:
-                    update.message.reply_document(
-                        document=doc_file,
-                        filename=f"CV_{user_data.get('name', 'User')}.docx",
-                        caption="🎉 **ها هي سيرتك الذاتية المجانية!**\n\nشكراً لثقتك بنا 🌟"
-                    )
-                update.message.reply_text("✅ تم الإرسال بنجاح! اكتب /start لإنشاء سيرة جديدة.")
-                return ConversationHandler.END
-            else:
-                # بدء التحصيل
-                success_msg = (
-                    f"✅ **تهانينا {user_data.get('name')}!**\n\n"
-                    "تم إنشاء سيرتك الذاتية بنجاح 🎉\n\n"
-                    "💰 **السعر: 25 ريال سعودي**\n\n"
-                    f"{BANK_INFO}\n\n"
-                    "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
-                )
-                update.message.reply_text(success_msg, reply_markup=create_keyboard(['تم الدفع']))
-                return PAYMENT
-                
+            success_msg = (
+                f"✅ **تهانينا {user_data.get('name')}!**\n\n"
+                "تم إنشاء سيرتك الذاتية بنجاح 🎉\n\n"
+                "💰 **السعر: 25 ريال سعودي**\n\n"
+                f"{BANK_INFO}\n\n"
+                "أرسل 'تم الدفع' بعد التحويل لاستلام الملف."
+            )
+            update.message.reply_text(success_msg, reply_markup=create_keyboard(['تم الدفع']))
+            return PAYMENT
+            
         except Exception as e:
             logger.error(f"CV creation error: {e}")
             update.message.reply_text("❌ حدث خطأ في الإنشاء. حاول /start مرة أخرى.")
             return ConversationHandler.END
             
     elif choice == 'تعديل':
-        update.message.reply_text("🔧 اختر ما تريد تعديله:", reply_markup=create_keyboard([
-            'الاسم', 'الجوال', 'الإيميل', 'العنوان', 'الهدف', 'التعليم', 'الخبرات', 'المهارات', 'اللغات', 'التصميم'
-        ]))
+        # إنشاء قائمة خيارات التعديل
+        options = [
+            'الاسم', 'الجوال', 'الإيميل', 'العنوان', 'الهدف', 
+            'التعليم', 'الخبرات', 'المهارات', 'اللغات', 'التصميم'
+        ]
+        
+        # إضافة خيارات للأقسام المخصصة إذا وجدت
+        if user_data.get('custom_sections'):
+            for i, section in enumerate(user_data['custom_sections']):
+                options.append(f'القسم {i+1}: {section["name"]}')
+        
+        update.message.reply_text("🔧 اختر ما تريد تعديله:", reply_markup=create_keyboard(options))
         return REVIEW
         
     else:  # لا أو أي رد آخر
@@ -459,6 +538,14 @@ def apply_modern_ats_template(doc, data):
     if data.get('languages') and data.get('languages') != "No languages specified":
         doc.add_heading('LANGUAGES', level=1)
         languages = doc.add_paragraph(data.get('languages'))
+        languages.paragraph_format.space_after = Pt(12)
+    
+    # === الأقسام المخصصة ===
+    if data.get('custom_sections'):
+        for section in data['custom_sections']:
+            doc.add_heading(section['name'].upper(), level=1)
+            content = doc.add_paragraph(section['content'])
+            content.paragraph_format.space_after = Pt(12)
 
 def apply_classic_template(doc, data):
     """القوالب الكلاسيكي"""
@@ -469,6 +556,11 @@ def apply_classic_template(doc, data):
     add_section_simple(doc, 'SKILLS', data.get('skills'))
     add_section_simple(doc, 'EDUCATION', data.get('education'))
     add_section_simple(doc, 'LANGUAGES', data.get('languages'))
+    
+    # الأقسام المخصصة
+    if data.get('custom_sections'):
+        for section in data['custom_sections']:
+            add_section_simple(doc, section['name'].upper(), section['content'])
 
 def apply_creative_template(doc, data):
     """القوالب الإبداعي"""
@@ -483,6 +575,11 @@ def apply_creative_template(doc, data):
     add_section_simple(doc, 'SKILLS & COMPETENCIES', data.get('skills'))
     add_section_simple(doc, 'EDUCATION', data.get('education'))
     add_section_simple(doc, 'LANGUAGES', data.get('languages'))
+    
+    # الأقسام المخصصة
+    if data.get('custom_sections'):
+        for section in data['custom_sections']:
+            add_section_simple(doc, section['name'].upper(), section['content'])
 
 def add_personal_info_simple(doc, data):
     """معلومات شخصية مبسطة"""
@@ -538,6 +635,9 @@ def main():
                 EXPERIENCE: [MessageHandler(Filters.text & ~Filters.command, get_experience)],
                 SKILLS: [MessageHandler(Filters.text & ~Filters.command, get_skills)],
                 LANGUAGES: [MessageHandler(Filters.text & ~Filters.command, get_languages)],
+                ADD_CUSTOM_SECTION: [MessageHandler(Filters.text & ~Filters.command, add_custom_section)],
+                CUSTOM_SECTION_NAME: [MessageHandler(Filters.text & ~Filters.command, get_custom_section_name)],
+                CUSTOM_SECTION_CONTENT: [MessageHandler(Filters.text & ~Filters.command, get_custom_section_content)],
                 TEMPLATE: [MessageHandler(Filters.text & ~Filters.command, choose_template)],
                 REVIEW: [MessageHandler(Filters.text & ~Filters.command, review_data)],
                 PAYMENT: [MessageHandler(Filters.text & ~Filters.command, check_payment)],
@@ -549,7 +649,7 @@ def main():
         
         # بدء البوت
         updater.start_polling()
-        logger.info(f"✅ Bot is running! Free trials: {FREE_TRIAL_COUNTER}/{FREE_TRIAL_LIMIT}")
+        logger.info("✅ Bot is running with enhanced features!")
         updater.idle()
         
     except Exception as e:
