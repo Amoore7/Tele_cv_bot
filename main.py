@@ -295,7 +295,7 @@ def add_custom_section(update, context):
 def get_custom_section_name(update, context):
     if update.message.text.lower() == 'رجوع':
         update.message.reply_text(
-            "➕ **هل ترغب في إضافة قسم إضافي؟**",
+            "➕ **هل ترغب في إضافة قسم إضافي؟",
             reply_markup=create_keyboard(['نعم', 'تخطي', 'رجوع'])
         )
         return ADD_CUSTOM_SECTION
@@ -362,7 +362,7 @@ def choose_template(update, context):
     if template_choice in templates:
         user_data['template'] = templates[template_choice]
         
-        # معاينة البيانات
+        # معاينة البيانات - السطر المصحح
         preview_msg = (
             "📋 **لمحة عن بياناتك:**\n\n"
             f"👤 **الاسم:** {user_data.get('name', 'N/A')}\n"
@@ -376,9 +376,9 @@ def choose_template(update, context):
             f"🌐 **اللغات:** {user_data.get('languages', 'N/A')}\n"
         )
         
-        # إضافة الأقسام المخصصة للمعاينة إذا وجدت
+        # إضافة الأقسام المخصصة للمعاينة إذا وجدت - السطر المصحح
         if user_data.get('custom_sections'):
-            preview_msg += f"➕ **الأقسام الإضافية:** {len(user_data['custom_sections']} قسم\n"
+            preview_msg += f"➕ **الأقسام الإضافية:** {len(user_data['custom_sections'])} قسم\n"
         
         preview_msg += f"🎨 **التصميم:** {user_data.get('template', 'N/A')}\n\n"
         preview_msg += "هل تريد المتابعة وإنشاء السيرة الذاتية؟"
