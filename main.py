@@ -55,7 +55,11 @@ def start(update, context):
         "🎯 **مرحباً بك في بوت السيرة الذاتية الاحترافية!**\n\n"
         "سأساعدك في إنشاء سيرة ذاتية إنجليزية احترافية بتصميم عصري.\n\n"
         "💰 **سعر الخدمة: 25 ريال سعودي**\n\n"
-        "🚀 **اختر طريقة البدء:**"
+        "🚀 **لتحسين نسبة ATS (نظام التتبع):**\n"
+        "• استخدم كلمات مفتاحية من وصف الوظيفة\n"
+        "• تجنب الجداول والتنسيق المعقد\n"
+        "• رتب المحتوى بشكل منطقي\n\n"
+        "اختر طريقة البدء:"
     )
     
     update.message.reply_text(welcome_msg, reply_markup=create_keyboard(['📝 بدء إنشاء السيرة', 'ℹ️ معلومات عن البوت']))
@@ -145,9 +149,11 @@ def get_address(update, context):
         user_data['address'] = update.message.text
     
     objective_msg = (
-        "🎯 **أدخل الهدف المهني (Career Objective):**\n\n"
+        "🎯 **أدخل الهدف المهني (Professional Summary):**\n\n"
         "💡 **مثال:**\n"
-        "To leverage my technical and sales expertise in building AI-powered digital solutions and driving revenue growth within a forward-thinking organization."
+        "Experienced sales professional with 5+ years in digital solutions. "
+        "Skilled in revenue growth, client relationship building, and AI-powered sales strategies. "
+        "Seeking to leverage expertise in a forward-thinking organization."
     )
     update.message.reply_text(objective_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return CAREER_OBJECTIVE
@@ -166,7 +172,8 @@ def get_career_objective(update, context):
     edu_msg = (
         "🎓 **أدخل مؤهلاتك التعليمية:**\n\n"
         "💡 **مثال:**\n"
-        "High School Diploma - Government School - 2011"
+        "Bachelor of Business Administration - King Saud University - 2018-2022\n"
+        "High School Diploma - Al-Noor School - 2014-2018"
     )
     update.message.reply_text(edu_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return EDUCATION
@@ -185,13 +192,15 @@ def get_education(update, context):
     exp_msg = (
         "💼 **أدخل خبراتك العملية:**\n\n"
         "💡 **مثال:**\n"
-        "Sales Officer | Wahat Al Munawara\n"
-        "Jan 2019 – Present\n"
-        "• Generated over 300,000 SAR in annual sales\n"
-        "• Built long-term client relationships\n\n"
-        "Owner & Founder | Digital Developer Establishment\n"
-        "Apr 2017 – Jan 2019\n"
-        "• Launched and managed smartphone retail business"
+        "Sales Manager | Tech Solutions Co.\n"
+        "Jan 2022 – Present\n"
+        "• Increased sales revenue by 35% through strategic client acquisition\n"
+        "• Managed a team of 5 sales representatives\n"
+        "• Implemented CRM system improving customer retention by 25%\n\n"
+        "Sales Representative | Digital Marketing Agency\n"
+        "Mar 2020 – Dec 2021\n"
+        "• Generated over 500,000 SAR in annual sales\n"
+        "• Developed new sales strategies resulting in 20% growth"
     )
     update.message.reply_text(exp_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return EXPERIENCE
@@ -209,8 +218,10 @@ def get_experience(update, context):
     
     skills_msg = (
         "🛠️ **أدخل مهاراتك (افصل بينها بفواصل):**\n\n"
-        "💡 **مثال:**\n"
-        "Sales Strategy, Digital Marketing, CRM, Project Management, Microsoft Office"
+        "💡 **مثال لتحسين ATS:**\n"
+        "Sales Strategy, Digital Marketing, CRM Management, Project Management, "
+        "Microsoft Office, Team Leadership, Client Acquisition, Negotiation, "
+        "Data Analysis, Communication Skills"
     )
     update.message.reply_text(skills_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return SKILLS
@@ -229,7 +240,7 @@ def get_skills(update, context):
     lang_msg = (
         "🌐 **أدخل اللغات التي تتقنها:**\n\n"
         "💡 **مثال:**\n"
-        "Arabic (Native), English (Fluent)"
+        "Arabic (Native), English (Fluent), French (Basic)"
     )
     update.message.reply_text(lang_msg, reply_markup=create_keyboard(['رجوع', 'تخطي']))
     return LANGUAGES
@@ -284,7 +295,7 @@ def add_custom_section(update, context):
     elif choice == 'نعم':
         update.message.reply_text(
             "📝 **ما هو اسم القسم الذي تريد إضافته؟**\n\n"
-            "مثال: Projects, Certifications, Awards, etc.",
+            "مثال: Certifications, Projects, Awards, etc.",
             reply_markup=create_keyboard(['رجوع'])
         )
         return CUSTOM_SECTION_NAME
@@ -362,7 +373,15 @@ def choose_template(update, context):
     if template_choice in templates:
         user_data['template'] = templates[template_choice]
         
-        # معاينة البيانات - السطر المصحح
+        # نصائح لتحسين ATS
+        ats_tips = (
+            "\n\n💡 **نصائح لتحسين نسبة ATS:**\n"
+            "• تأكد من وجود الكلمات المفتاحية للوظيفة\n"
+            "• استخدم تنسيقاً بسيطاً وخالياً من الجداول\n"
+            "• رتب الأقسام بشكل منطقي (مهارات ← خبرات ← تعليم)"
+        )
+        
+        # معاينة البيانات
         preview_msg = (
             "📋 **لمحة عن بياناتك:**\n\n"
             f"👤 **الاسم:** {user_data.get('name', 'N/A')}\n"
@@ -376,12 +395,12 @@ def choose_template(update, context):
             f"🌐 **اللغات:** {user_data.get('languages', 'N/A')}\n"
         )
         
-        # إضافة الأقسام المخصصة للمعاينة إذا وجدت - السطر المصحح
         if user_data.get('custom_sections'):
             preview_msg += f"➕ **الأقسام الإضافية:** {len(user_data['custom_sections'])} قسم\n"
         
-        preview_msg += f"🎨 **التصميم:** {user_data.get('template', 'N/A')}\n\n"
-        preview_msg += "هل تريد المتابعة وإنشاء السيرة الذاتية؟"
+        preview_msg += f"🎨 **التصميم:** {user_data.get('template', 'N/A')}"
+        preview_msg += ats_tips
+        preview_msg += "\n\nهل تريد المتابعة وإنشاء السيرة الذاتية؟"
         
         update.message.reply_text(preview_msg, reply_markup=create_keyboard(['نعم', 'لا', 'تعديل']))
         return REVIEW
@@ -440,7 +459,12 @@ def check_payment(update, context):
                     update.message.reply_document(
                         document=doc_file,
                         filename=f"CV_{user_data.get('name', 'User')}.docx",
-                        caption="🎉 **ها هي سيرتك الذاتية الجاهزة!**\n\nشكراً لثقتك بنا 🌟"
+                        caption="🎉 **ها هي سيرتك الذاتية الجاهزة!**\n\n"
+                                "💡 **نصائح لتحسين نسبة ATS:**\n"
+                                "• تأكد من مطابقة الكلمات المفتاحية مع الوظيفة\n"
+                                "• اختبر السيرة على موقع Resume Worded\n"
+                                "• استخدم التصميم الحديث لنتائج أفضل\n\n"
+                                "شكراً لثقتك بنا 🌟"
                     )
                 update.message.reply_text("✅ تم الإرسال بنجاح! اكتب /start لإنشاء سيرة جديدة.")
             else:
@@ -488,72 +512,87 @@ def create_professional_cv(data, template_name):
         raise
 
 def apply_modern_ats_template(doc, data):
-    """التصميم الحديث ATS-Friendly"""
+    """التصميم الحديث ATS-Friendly - محسّن"""
     # === الإعداد العام ===
     style = doc.styles['Normal']
-    style.font.name = 'Calibri'
+    style.font.name = 'Calibri'  # خط قياسي
     style.font.size = Pt(11)
     
-    # === الاسم ===
+    # === معلومات الاتصال في الأعلى ===
     name = doc.add_paragraph()
     name_run = name.add_run(data.get('name', '').upper())
     name_run.font.size = Pt(16)
     name_run.bold = True
     name.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    name.paragraph_format.space_after = Pt(6)
     
-    # === معلومات الاتصال ===
     contact = doc.add_paragraph()
     contact.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    contact.add_run(f"Phone: {data.get('phone', '')} | ")
-    contact.add_run(f"Email: {data.get('email', '')} | ")
-    contact.add_run(f"Address: {data.get('address', 'Medina, Saudi Arabia')}")
+    contact.add_run(f"{data.get('phone', '')} | ")
+    contact.add_run(f"{data.get('email', '')} | ")
+    contact.add_run(f"{data.get('address', 'Medina, Saudi Arabia')}")
     contact.paragraph_format.space_after = Pt(12)
     
-    # === الهدف المهني ===
+    # === الأقسام بترتيب مناسب لـ ATS ===
+    
+    # الملخص المهني (بدلاً من الهدف)
     if data.get('career_objective'):
-        doc.add_heading('CAREER OBJECTIVE', level=1)
-        objective = doc.add_paragraph(data.get('career_objective'))
-        objective.paragraph_format.space_after = Pt(12)
+        doc.add_heading('PROFESSIONAL SUMMARY', level=1)
+        summary = doc.add_paragraph(data.get('career_objective'))
+        summary.paragraph_format.space_after = Pt(8)
     
-    # === الخبرات ===
-    if data.get('experience') and data.get('experience') != "No work experience specified":
-        doc.add_heading('EXPERIENCE', level=1)
-        experience = doc.add_paragraph(data.get('experience'))
-        experience.paragraph_format.space_after = Pt(12)
-    
-    # === المهارات ===
+    # المهارات (مهم جداً لـ ATS)
     if data.get('skills') and data.get('skills') != "No skills specified":
         doc.add_heading('SKILLS', level=1)
-        skills = doc.add_paragraph(data.get('skills'))
-        skills.paragraph_format.space_after = Pt(12)
+        skills_list = data.get('skills', '').split(',')
+        skills_paragraph = doc.add_paragraph()
+        for i, skill in enumerate(skills_list):
+            if i > 0:
+                skills_paragraph.add_run(' • ')
+            skills_paragraph.add_run(skill.strip())
+        skills_paragraph.paragraph_format.space_after = Pt(8)
     
-    # === التعليم ===
+    # الخبرات العملية
+    if data.get('experience') and data.get('experience') != "No work experience specified":
+        doc.add_heading('WORK EXPERIENCE', level=1)
+        experience_lines = data.get('experience', '').split('\n')
+        for line in experience_lines:
+            if line.strip().startswith('•'):
+                doc.add_paragraph(line.strip(), style='List Bullet')
+            else:
+                doc.add_paragraph(line.strip())
+        doc.add_paragraph()  # مسافة فارغة
+    
+    # التعليم
     if data.get('education') and data.get('education') != "No formal education specified":
         doc.add_heading('EDUCATION', level=1)
         education = doc.add_paragraph(data.get('education'))
-        education.paragraph_format.space_after = Pt(12)
+        education.paragraph_format.space_after = Pt(8)
     
-    # === اللغات ===
+    # اللغات
     if data.get('languages') and data.get('languages') != "No languages specified":
         doc.add_heading('LANGUAGES', level=1)
         languages = doc.add_paragraph(data.get('languages'))
-        languages.paragraph_format.space_after = Pt(12)
+        languages.paragraph_format.space_after = Pt(8)
     
-    # === الأقسام المخصصة ===
+    # الأقسام المخصصة
     if data.get('custom_sections'):
         for section in data['custom_sections']:
             doc.add_heading(section['name'].upper(), level=1)
-            content = doc.add_paragraph(section['content'])
-            content.paragraph_format.space_after = Pt(12)
+            content_lines = section['content'].split('\n')
+            for line in content_lines:
+                if line.strip().startswith('•'):
+                    doc.add_paragraph(line.strip(), style='List Bullet')
+                else:
+                    doc.add_paragraph(line.strip())
+            doc.add_paragraph()  # مسافة فارغة
 
 def apply_classic_template(doc, data):
     """القوالب الكلاسيكي"""
     doc.add_heading('CURRICULUM VITAE', 0)
     add_personal_info_simple(doc, data)
-    add_section_simple(doc, 'CAREER OBJECTIVE', data.get('career_objective'))
-    add_section_simple(doc, 'EXPERIENCE', data.get('experience'))
+    add_section_simple(doc, 'PROFESSIONAL SUMMARY', data.get('career_objective'))
     add_section_simple(doc, 'SKILLS', data.get('skills'))
+    add_section_simple(doc, 'WORK EXPERIENCE', data.get('experience'))
     add_section_simple(doc, 'EDUCATION', data.get('education'))
     add_section_simple(doc, 'LANGUAGES', data.get('languages'))
     
@@ -570,9 +609,9 @@ def apply_creative_template(doc, data):
     title.style.font.name = 'Georgia'
     
     add_personal_info_simple(doc, data)
-    add_section_simple(doc, 'CAREER OBJECTIVE', data.get('career_objective'))
-    add_section_simple(doc, 'PROFESSIONAL EXPERIENCE', data.get('experience'))
+    add_section_simple(doc, 'PROFESSIONAL SUMMARY', data.get('career_objective'))
     add_section_simple(doc, 'SKILLS & COMPETENCIES', data.get('skills'))
+    add_section_simple(doc, 'PROFESSIONAL EXPERIENCE', data.get('experience'))
     add_section_simple(doc, 'EDUCATION', data.get('education'))
     add_section_simple(doc, 'LANGUAGES', data.get('languages'))
     
@@ -601,6 +640,18 @@ def add_section_simple(doc, title, content):
         doc.add_heading(title, level=1)
         doc.add_paragraph(content)
         doc.add_paragraph().paragraph_format.space_after = Pt(12)
+
+def optimize_for_ats(job_title=None, job_description=None):
+    """إضافة كلمات مفتاحية بناءً على الوظيفة المستهدفة"""
+    ats_keywords = {
+        'technical': ['Python', 'JavaScript', 'SQL', 'Git', 'API', 'AWS', 'Docker', 'Linux', 'MySQL'],
+        'management': ['Leadership', 'Project Management', 'Team Building', 'Strategy', 'Budget Management'],
+        'sales': ['Sales Growth', 'Revenue', 'Customer Acquisition', 'Negotiation', 'CRM'],
+        'marketing': ['Digital Marketing', 'SEO', 'Social Media', 'Content Creation', 'Analytics'],
+        'general': ['Problem Solving', 'Communication', 'Teamwork', 'Analytical Skills', 'Time Management']
+    }
+    
+    return ats_keywords
 
 def error_handler(update, context):
     logger.error(f'Bot error: {context.error}')
@@ -649,7 +700,7 @@ def main():
         
         # بدء البوت
         updater.start_polling()
-        logger.info("✅ Bot is running with enhanced features!")
+        logger.info("✅ Bot is running with enhanced ATS features!")
         updater.idle()
         
     except Exception as e:
